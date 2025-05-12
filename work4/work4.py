@@ -47,7 +47,7 @@ def signin():
     password = request.form.get("password")
 
     # Check if the username and password are correct
-    if username == "admin" and password == "password":
+    if username == "admin" and password == "123456":
         return "<h3>Hello, admin!</h3>"
     return "<h3>Bad username or password.</h3>"
 
