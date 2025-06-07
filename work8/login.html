@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block title %}登录{% endblock %}
+{% block content %}
+<h3 class="mb-4">用户登录</h3>
+<form method="post">
+    <div class="mb-3">
+        <label class="form-label">用户名</label>
+        <input type="text" name="username" class="form-control" required>
+    </div>
+    <div class="mb-3">
+        <label class="form-label">密码</label>
+        <input type="password" name="password" class="form-control" required>
+    </div>
+    {% if error %}
+        <div class="alert alert-danger">{{ error }}</div>
+    {% endif %}
+    <button type="submit" class="btn btn-primary">登录</button>
+    <a href="{{ url_for('register') }}" class="btn btn-link">注册账号</a>
+</form>
+{% endblock %}

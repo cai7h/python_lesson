@@ -1,79 +1,76 @@
-"""
-A script to extract movie information from HTML files.
-
-This script reads HTML files from a specified directory, parses them using BeautifulSoup,
-and extracts movie-related information including title, rating, comment count, directors, link, and picture URL.
-"""
-
 import os
 from bs4 import BeautifulSoup
 
-DESTINATION_DIRECTORY = "d:/Github/python_lesson/"
+# 设置新的 HTML 文件夹路径和输出 TXT 文件路径
+source_dir = r"C:\Users\CK\Desktop\inventory"  # 修改为目标目录
+output_file = os.path.join(source_dir, "douban_extracted.txt")  # 输出文件仍放在该目录下
 
+# 检查源目录是否存在，不存在则创建（避免文件读取错误）
+if not os.path.exists(source_dir):
+    os.makedirs(source_dir)
+    print(f"提示：源目录 {source_dir} 不存在，已自动创建")
 
-def extract_movie_info(movie_element):
-    """
-    Extracts detailed information from a movie element.
+# 打开输出文件用于写入
+with open(output_file, "w", encoding="utf-8") as out:
+    # 遍历源目录下的所有文件
+    for file_name in os.listdir(source_dir):
+        # 只处理 HTML 文件
+        if not file_name.endswith(".html"):
+            continue
 
-    Args:
-        movie_element (bs4.element.Tag): A BeautifulSoup Tag representing a movie element.
+        # 构造完整的 HTML 文件路径
+        file_path = os.path.join(source_dir, file_name)
+        with open(file_path, "r", encoding="utf-8") as f:
+            html = f.read()
 
-    Returns:
-        tuple: A tuple containing extracted movie information.
-    """
-    title_element = movie_element.find('div', class_='hd')
-    title = title_element.find('span', class_='title').get_text(strip=True) \
-        if title_element and title_element.find('span', class_='title') else "No title found"
+        # 使用 BeautifulSoup 解析 HTML
+        soup = BeautifulSoup(html, "lxml")
+        movie_items = soup.select("ol.grid_view li")  # 获取电影项列表
 
-    rating_num = movie_element.find('span', class_='rating_num').get_text(strip=True) \
-        if movie_element.find('span', class_='rating_num') else "No rating found"
-
-    comment_span = movie_element.find('div', class_='star').find_all('span') \
-        if movie_element.find('div', class_='star') else []
-    comment_num = comment_span[-1].get_text(strip=True) if comment_span and len(comment_span) > 0 else "No comments found"
-
-    directors = movie_element.find('div', class_='bd').find('p').get_text(strip=True) \
-        if movie_element.find('div', class_='bd') and movie_element.find('div', class_='bd').find('p') else "No directors found"
-
-    link_element = movie_element.find('div', class_='pic').find('a') \
-        if movie_element.find('div', class_='pic') else None
-    link = link_element.get('href') if link_element else "No link found"
-
-    pic_element = movie_element.find('div', class_='pic').find('img') \
-        if movie_element.find('div', class_='pic') else None
-    pic = pic_element.get('src') if pic_element else "No picture found"
-
-    return title, rating_num, comment_num, directors, link, pic
-
-
-def process_html_files(directory):
-    """
-    Processes HTML files in the given directory and extracts movie information.
-
-    Args:
-        directory (str): The path to the directory containing HTML files.
-    """
-    for html_file in os.listdir(directory):
-        full_path = os.path.join(directory, html_file)
-        if os.path.isfile(full_path):
+        # 遍历每部电影的信息
+        for movie in movie_items:
             try:
-                with open(full_path, "r", encoding="utf-8") as file_handler:
-                    html = file_handler.read()
-                    soup = BeautifulSoup(html, 'lxml')
-                    movie_list = soup.find('ol', class_='grid_view')
-                    if movie_list:
-                        for movie in movie_list.find_all('li'):
-                            movie_info = extract_movie_info(movie)
-                            print(movie_info)
-                    else:
-                        print(f"No movie list found in {html_file}")
-            except PermissionError:
-                print(f"Permission denied for {full_path}")
-            except Exception as exception:
-                print(f"An error occurred while processing {html_file}: {exception}")
-        else:
-            print(f"Skipping directory: {html_file}")
+                # 标题（主标题）
+                title_tag = movie.find("span", class_="title")
+                if not title_tag:
+                    print(f"[跳过] 未找到标题：{file_name}")
+                    continue
+                title = title_tag.get_text(strip=True)
 
+                # 评分
+                rating_tag = movie.find("span", class_="rating_num")
+                rating = rating_tag.get_text(strip=True) if rating_tag else ""
 
-if __name__ == "__main__":
-    process_html_files(DESTINATION_DIRECTORY)
+                # 评论人数（从星标区域提取）
+                star_div = movie.find("div", class_="star")
+                comment_text = star_div.find_all("span")[-1].get_text(strip=True) if star_div else ""
+                comment_num = ''.join(filter(str.isdigit, comment_text))  # 提取纯数字
+
+                # 导演与主演（从简介段落提取）
+                p_tag = movie.find("div", class_="bd").find("p")
+                info_text = p_tag.get_text(strip=True) if p_tag else ""
+                director, actor = "", ""
+                if "导演" in info_text:
+                    parts = info_text.split("主演:")
+                    director = parts[0].replace("导演:", "").strip()  # 导演信息
+                    if len(parts) > 1:
+                        actor = parts[1].strip()  # 主演信息（可能为空）
+
+                # 年份 / 国家 / 类型（从简介段落的第二行提取）
+                lines = p_tag.get_text().split("\n") if p_tag else []
+                last_line = lines[-1].strip() if len(lines) > 1 else ""
+                detail_parts = last_line.split("/")
+                year = detail_parts[0].strip() if len(detail_parts) > 0 else ""  # 年份
+                country = detail_parts[1].strip() if len(detail_parts) > 1 else ""  # 国家
+                genre = detail_parts[2].strip() if len(detail_parts) > 2 else ""  # 类型
+
+                # 海报图片链接
+                img_tag = movie.find("img")
+                pic_link = img_tag.get("src") if img_tag else ""
+
+                # 写入 TXT 文件（使用制表符 \t 分隔字段，方便后续处理）
+                out.write(f"{title}\t{rating}\t{comment_num}\t{director}\t{actor}\t{year}\t{country}\t{genre}\t{pic_link}\n")
+                print(f"[成功] 写入：{title}")
+
+            except Exception as e:
+                print(f"[跳过] 某部电影解析失败：{e}")

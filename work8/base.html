@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}豆瓣电影搜索系统{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- 引入优化后的样式 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* 自定义配色方案 */
+        :root {
+            --primary-color: #0084ff; /* 主蓝色 */
+            --secondary-color: #f8f9fa; /* 浅背景 */
+            --dark-color: #1a1a1a; /* 深文本色 */
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            line-height: 1.6;
+            color: var(--dark-color);
+            background-color: #f0f2f5; /* 更柔和的背景色 */
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #0056b3 100%); /* 渐变背景 */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* 阴影效果 */
+        }
+
+        .navbar-brand {
+            font-weight: 600;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .navbar-brand::before {
+            content: "";
+            width: 24px;
+            height: 24px;
+            background: url('https://img3.doubanio.com/f/movie/47a1a9c57d8f50b0f3d4f5a7f3b1e4f5d2a3b8a9c/pics/movie/douban-film-logo.svg') no-repeat center/cover;
+            margin-right: 8px;
+        }
+
+        .search-container {
+            max-width: 600px;
+            margin: 3rem auto;
+            position: relative;
+        }
+
+        .form-control {
+            border-radius: 2rem;
+            padding: 1.2rem 2rem;
+            font-size: 1rem;
+            box-shadow: none;
+            border: 2px solid transparent;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.25rem rgba(0, 132, 255, 0.2);
+        }
+
+        .btn-search {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            border-radius: 0 2rem 2rem 0;
+            padding: 0 2.5rem;
+            background: var(--primary-color);
+            color: white;
+            transition: transform 0.2s ease;
+        }
+
+        .btn-search:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 132, 255, 0.2);
+        }
+
+        .card {
+            border-radius: 1rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-img-top {
+            border-radius: 1rem 1rem 0 0;
+            aspect-ratio: 3/4;
+            object-fit: cover;
+        }
+
+        .footer {
+            margin-top: 3rem;
+            padding: 2rem 0;
+            background: var(--dark-color);
+            color: white;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        .footer a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="#">
+            豆瓣电影
+        </a>
+        <div class="navbar-nav ms-auto">
+            <a class="nav-link text-white" href="#">首页</a>
+            <a class="nav-link text-white" href="#">排行榜</a>
+            <a class="nav-link text-white" href="#">我的收藏</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container py-5">
+    <div class="search-container">
+        <form class="d-flex">
+            <input type="text" class="form-control" placeholder="搜索电影名称、导演或演员">
+            <button type="submit" class="btn btn-search">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
+                    <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+                </svg>
+                搜索
+            </button>
+        </form>
+    </div>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="alert alert-info alert-dismissible fade show mt-4" role="alert">
+                {{ messages[0] }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    {% block content %}
+        <!-- 电影列表示例 -->
+        <div class="row g-4 mt-5">
+            <div class="col-md-4">
+                <div class="card">
+                    <img src="https://example.com/movie.jpg" class="card-img-top" alt="电影封面">
+                    <div class="card-body">
+                        <h5 class="card-title">肖申克的救赎</h5>
+                        <p class="card-text">评分：9.7</p>
+                        <p class="card-text">类型：剧情 / 犯罪</p>
+                        <a href="#" class="btn btn-primary btn-sm">查看详情</a>
+                    </div>
+                </div>
+            </div>
+            <!-- 更多电影卡片... -->
+        </div>
+    {% endblock %}
+</div>
+
+<footer class="footer">
+    <div class="container">
+        <p>© 2025 豆瓣电影搜索系统</p>
+        <p>Powered by <a href="https://dianying.douban.com/" target="_blank">豆瓣API</a></p>
+    </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

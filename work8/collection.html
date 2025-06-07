@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %}我的收藏{% endblock %}
+{% block content %}
+<h3 class="mb-4">我的收藏</h3>
+{% if collections %}
+<ul class="list-group">
+    {% for c in collections %}
+        <li class="list-group-item">{{ c.movie.title }}（{{ c.movie.year }}）</li>
+    {% endfor %}
+</ul>
+{% else %}
+<div class="alert alert-secondary">您尚未收藏任何电影。</div>
+{% endif %}
+<a href="{{ url_for('home') }}" class="btn btn-link mt-3">返回首页</a>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block title %}电影查询{% endblock %}
+{% block content %}
+<h3 class="mb-3">查询电影</h3>
+<form method="post" class="row g-3">
+    <div class="col-auto">
+        <input type="text" name="year" class="form-control" placeholder="请输入年份" value="{{ year }}">
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-primary mb-3">查询</button>
+    </div>
+</form>
+{% if movies %}
+<ul class="list-group">
+    {% for m in movies %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+            {{ m.title }}（{{ m.year }}）
+            <form method="post" action="{{ url_for('collect', movie_id=m.id) }}">
+                <button type="submit" class="btn btn-sm btn-outline-success">收藏</button>
+            </form>
+        </li>
+    {% endfor %}
+</ul>
+{% elif year %}
+<div class="alert alert-warning mt-3">该年份暂无电影记录。</div>
+{% endif %}
+<a href="{{ url_for('home') }}" class="btn btn-link mt-3">返回首页</a>
+{% endblock %}

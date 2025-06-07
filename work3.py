@@ -1,136 +1,120 @@
+import os
+import pymysql
 from bs4 import BeautifulSoup
 from peewee import *
-import re
 
-# 数据库连接配置
+# ========== 数据库连接 ==========
+pymysql.install_as_MySQLdb()
 db = MySQLDatabase(
-    "python_lesson",
+    database="python_lesson",
     host="localhost",
     port=3306,
     user="root",
-    password="Cqh051213"  # 注意：实际项目中应使用更安全的密码存储方式
+    password="Cqh051213",  # 改为你自己的数据库密码
+    charset='utf8mb4'
 )
 
-
-class Movie(Model):
-    """豆瓣电影数据模型"""
-    title = CharField(max_length=200)
-    rating_num = FloatField()
+# ========== 数据模型 ==========
+class DoubanMovie(Model):
+    title = CharField(max_length=100)
+    rating = FloatField()
     comment_num = IntegerField()
-    directors = CharField(max_length=200)
-    actors = CharField(max_length=200)
-    year = CharField(max_length=10)
-    country = CharField(max_length=100)
-    category = CharField(max_length=100)
-    pic = CharField(max_length=200)
+    director = TextField()
+    actor = CharField(max_length=100)
+    year = IntegerField()
+    country = CharField(max_length=50)
+    genre = CharField(max_length=100, null=True)
+    pic_link = TextField(null=True)
 
     class Meta:
         database = db
         table_name = 'douban_movie'
 
+# ========== 提取并写入数据库 ==========
+def extract_and_store_html_to_db(source_dir):
+    count = 0
+    for file_name in os.listdir(source_dir):
+        if not file_name.endswith(".html"):
+            continue  # 跳过非 HTML 文件
 
-def parse_movie_info(movie_element):
-    """解析单个电影元素，提取电影信息"""
-    try:
-        # 电影名称
-        title = movie_element.find('div', class_='hd').find('span', class_='title').get_text(strip=True)
-        
-        # 评价分数
-        rating_num = float(movie_element.find('div', class_='bd').find('div').find('span', class_='rating_num').get_text())
-        
-        # 评论人数
-        comment_text = movie_element.find('div', class_='bd').find('div').find_all('span')[-1].get_text(strip=True)
-        comment_num = int(re.search(r'(\d+)', comment_text).group(1))
-        
-        # 导演和主演信息
-        info_paragraph = movie_element.find('div', class_='bd').find('p').get_text(strip=True)
-        lines = info_paragraph.split('\n')
-        directors_info = lines[0].strip()
-        
-        directors_match = re.search(r'导演:\s*(.*?)(?:\s*主演:|$)', directors_info)
-        directors = directors_match.group(1).strip() if directors_match else ''
-        
-        actors_match = re.search(r'主演:\s*(.*)', directors_info)
-        actors = actors_match.group(1).strip() if actors_match else ''
-        
-        # 上映时间、出品地、剧情类别
-        if len(lines) > 1:
-            info_line = lines[1].strip()
-            parts = info_line.split('/')
-            year = parts[0].strip() if parts else ''
-            country = parts[1].strip() if len(parts) > 1 else ''
-            category = parts[2].strip() if len(parts) > 2 else ''
-        else:
-            year = country = category = ''
-        
-        # 电影标题图链接
-        pic = movie_element.find('div', class_='item').find('div', class_='pic').find('a').find('img').get('src', '')
-        
-        return {
-            'title': title,
-            'rating_num': rating_num,
-            'comment_num': comment_num,
-            'directors': directors,
-            'actors': actors,
-            'year': year,
-            'country': country,
-            'category': category,
-            'pic': pic
-        }
-    except (AttributeError, ValueError, IndexError) as error:
-        print(f"解析电影信息时出错: {error}")
-        return None
+        file_path = os.path.join(source_dir, file_name)
+        with open(file_path, "r", encoding="utf-8") as f:
+            html = f.read()
 
+        soup = BeautifulSoup(html, "lxml")
+        movie_items = soup.select("ol.grid_view li")  # 获取电影项列表
 
-def save_movie(data):
-    """保存电影数据到数据库"""
-    if not data:
-        return
-    
-    try:
-        with db.atomic():
-            Movie.create(**data)
-    except IntegrityError as error:
-        print(f"数据完整性错误: {error}")
-    except Exception as error:
-        print(f"保存数据时出错: {error}")
+        for idx, movie in enumerate(movie_items, 1):
+            try:
+                # 标题
+                title_tag = movie.find("span", class_="title")
+                title = title_tag.get_text(strip=True) if title_tag else "无标题"
 
+                # 评分
+                rating_tag = movie.find("span", class_="rating_num")
+                rating = float(rating_tag.get_text(strip=True)) if rating_tag else 0.0
 
-def main():
-    """主函数：读取HTML文件，解析数据并保存到数据库"""
-    try:
-        # 连接数据库
-        db.connect()
-        # 创建数据表
-        db.create_tables([Movie])
-        
-        # 读取HTML文件
-        with open('douban.html', 'r', encoding='utf-8') as file:
-            html_content = file.read()
-        
-        # 分割页面内容
-        page_sections = html_content.split('<ol class="grid_view">')[1:]
-        
-        # 解析并保存每部电影信息
-        for section in page_sections:
-            section = '<ol class="grid_view">' + section
-            soup = BeautifulSoup(section, 'lxml')
-            movie_list = soup.find('ol', class_='grid_view').find_all('li')
-            
-            for movie in movie_list:
-                movie_data = parse_movie_info(movie)
-                save_movie(movie_data)
-        
-        print('数据抽取并保存到数据库完成。')
-    except FileNotFoundError:
-        print("错误：找不到douban.html文件")
-    except Exception as error:
-        print(f"发生未知错误: {error}")
-    finally:
-        # 关闭数据库连接
-        if not db.is_closed():
-            db.close()
+                # 评论人数
+                star_div = movie.find("div", class_="star")
+                comment_text = star_div.find_all("span")[-1].get_text(strip=True) if star_div else ""
+                comment_num = int(''.join(filter(str.isdigit, comment_text))) if comment_text else 0
 
+                # 导演与主演
+                p_tag = movie.find("div", class_="bd").find("p")
+                info_text = p_tag.get_text(strip=True) if p_tag else ""
+                director, actor = "", ""
+                if "导演" in info_text:
+                    parts = info_text.split("主演:")
+                    director = parts[0].replace("导演:", "").strip()
+                    actor = parts[1].strip() if len(parts) > 1 else ""
 
+                # 年份 / 国家 / 类型（新版解析方式，兼容多种换行结构）
+                year = 0
+                country = ""
+                genre = ""
+                detail_line = ""
+                if p_tag:
+                    for line in p_tag.stripped_strings:
+                        if '/' in line and any(c.isdigit() for c in line):
+                            detail_line = line
+                            break
+                parts = [p.strip() for p in detail_line.split('/')]
+                if len(parts) > 0 and parts[0][:4].isdigit():
+                    year = int(parts[0][:4])
+                country = parts[1] if len(parts) > 1 else ""
+                genre = parts[2] if len(parts) > 2 else ""
+
+                # 图片链接
+                pic_tag = movie.find("img")
+                pic_link = pic_tag.get("src") if pic_tag else ""
+
+                # 写入数据库
+                DoubanMovie.create(
+                    title=title,
+                    rating=rating,
+                    comment_num=comment_num,
+                    director=director,
+                    actor=actor,
+                    year=year,
+                    country=country,
+                    genre=genre,
+                    pic_link=pic_link
+                )
+                print(f"[成功] 第{count + 1}部：{title}")
+                count += 1
+
+            except Exception as e:
+                print(f"[跳过] {file_name} 第{idx}条写入失败：{e}")
+
+    print(f"\n✅ 共写入 {count} 部电影信息")
+
+# ========== 主程序入口 ==========
 if __name__ == "__main__":
-    main()    
+    db.connect()
+    db.drop_tables([DoubanMovie])                # 重新创建表（谨慎使用，会清空数据）
+    db.create_tables([DoubanMovie])
+    db.execute_sql("ALTER TABLE douban_movie AUTO_INCREMENT = 1;")  # id 从1开始
+
+    # 修改为目标路径（使用原始字符串避免反斜杠转义）
+    html_source_dir = r"C:\Users\CK\Desktop\inventory"
+    extract_and_store_html_to_db(html_source_dir)
